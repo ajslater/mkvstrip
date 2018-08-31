@@ -37,6 +37,7 @@ Codacy: https://app.codacy.com/app/willforde/mkvstrip/dashboard
 
 __version__ = "1.0.2"
 
+from typing import Dict, List, Callable, Tuple
 from functools import lru_cache
 from operator import itemgetter
 import subprocess
@@ -50,7 +51,7 @@ import os
 cli_args = None
 
 
-def catch_interrupt(func):
+def catch_interrupt(func: Callable) -> Callable:
     """Decorator to catch Keyboard Interrupts and silently exit."""
     def wrapper(*args, **kwargs):
         try:
@@ -62,15 +63,8 @@ def catch_interrupt(func):
     return wrapper
 
 
-def walk_directory(path):
-    """
-    Walk through the given directory to find all mkv files and process them.
-
-    :param str path: Path to Directory containing mkv files.
-
-    :return: List of processed mkv files.
-    :rtype: list[str]
-    """
+def walk_directory(path: str) -> List[str]:
+    """Walk through the given directory to find all mkv files and process them."""
     movie_list = []
     if os.path.isfile(path):
         if path.lower().endswith(".mkv"):
@@ -101,14 +95,10 @@ def walk_directory(path):
     return movie_list
 
 
-def remux_file(command):
+def remux_file(command: List[str]) -> bool:
     """
     Remux a mkv file with the given parameters.
-
-    :param list command: The list of command parameters to pass to mkvmerge.
-
-    :return: Boolean indicating if remux was successful.
-    :rtype: bool
+    Returns True if remux was successful
     """
     # Skip remuxing if in dry run mode
     if cli_args.dry_run:
@@ -138,6 +128,7 @@ def remux_file(command):
         # Check if return code indicates an error
         sys.stdout.write("\n")
         if retcode:
+            # noinspection PyTypeChecker
             raise subprocess.CalledProcessError(retcode, command, output=process.stdout)
 
     except subprocess.CalledProcessError as e:
@@ -148,13 +139,8 @@ def remux_file(command):
         return True
 
 
-def replace_file(tmp_file, org_file):
-    """
-    Replaces the original mkv file with the newly remuxed temp file.
-
-    :param str tmp_file: The temporary mkv file
-    :param str org_file: The original mkv file to replace.
-    """
+def replace_file(tmp_file: str, org_file: str):
+    """Replaces the original mkv file with the newly remuxed temp file."""
     # Preserve timestamp
     stat = os.stat(org_file)
     os.utime(tmp_file, (stat.st_atime, stat.st_mtime))
@@ -190,12 +176,8 @@ class RealPath(argparse.Action):
 
 
 class Track(object):
-    """
-    Class to handle mkv track information.
-
-    :param dict track_data: The track data given by mkvmerge.
-    """
-    def __init__(self, track_data):
+    """Class to handle mkv track information."""
+    def __init__(self, track_data: Dict):
         self.lang = track_data["properties"].get("language", "und")
         self.codec = track_data["codec"]
         self.type = track_data["type"]
@@ -209,10 +191,8 @@ class MKVFile(object):
     """
     Extracts track information contained within a Matroska file and
     checks for unwanted audio & subtitle tracks.
-
-    :param str path: Path to the Matroska file to process.
     """
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.dirpath, self.filename = os.path.split(path)
         self.subtitle_tracks = []
         self.video_tracks = []
@@ -236,7 +216,7 @@ class MKVFile(object):
             track_map[track_obj.type].append(track_obj)
 
     @lru_cache()
-    def _filtered_tracks(self, track_type):
+    def _filtered_tracks(self, track_type: str) -> Tuple[List[Track], List[Track]]:
         """
         Return a tuple consisting of tracks to keep and tracks to remove, if
         there are indeed tracks that need to be removed, else return False.
@@ -244,11 +224,6 @@ class MKVFile(object):
         Available track types:
             subtitle
             audio
-
-        :param str track_type: The track type to check.
-
-        :return: Tuple of tracks to keep and remove
-        :rtype: tuple[list[Track]]
         """
         # Lists of track to keep & remove
         remove = []
@@ -266,12 +241,10 @@ class MKVFile(object):
         return keep, remove
 
     @property
-    def remux_required(self):
+    def remux_required(self) -> bool:
         """
         Check if any remuxing of the mkv files is required.
-
-        :return: Return True if remuxing is required else False
-        :rtype: bool
+        Return True if remuxing is required else False.
         """
         # Check if any tracks need to be removed
         # We will only remove tracks when there is also tracks that will be kepth
@@ -337,7 +310,6 @@ def main(params=None):
     Check all mkv files an remove unnecessary tracks.
 
     :param params: [opt] List of arguments to pass to argparse.
-    :type params: list or tuple
     """
     # Create Parser to parse the required arguments
     parser = argparse.ArgumentParser(description="Strips unnecessary tracks from MKV files.")

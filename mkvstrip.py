@@ -48,7 +48,7 @@ import sys
 import os
 
 # Global parser namespace
-cli_args = None
+cli_args = None  # type: argparse.Namespace
 
 
 def catch_interrupt(func: Callable) -> Callable:

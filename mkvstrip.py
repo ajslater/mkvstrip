@@ -396,12 +396,21 @@ def strip_tree(path, cli_args):
     """Walk the dirtree of the given path and strip evertyhing."""
     # lang_roots is held as a cache per tree in this scope
     lang_roots = {}
-    root_path = os.path.realpath(path)
+    real_path = os.path.realpath(path)
 
-    for root, _, filelist in os.walk(root_path):
-        cli_args.language = get_langs(root_path, root, lang_roots,
+    if os.path.isfile(real_path):
+        dirname = os.path.dirname(real_path)
+        one_file = os.path.basename(real_path)
+        cli_args.recurse = False
+    else:
+        dirname = real_path
+        one_file = None
+
+    for root, _, filelist in os.walk(dirname):
+        cli_args.language = get_langs(dirname, root, lang_roots,
                                       cli_args)
-        print(root, cli_args.language)
+        if one_file is not None and one_file in filelist:
+            filelist = (one_file,)
         for filename in filelist:
             if not filename.endswith('mkv'):
                 continue

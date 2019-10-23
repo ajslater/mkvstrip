@@ -46,6 +46,8 @@ import json
 import sys
 import os
 
+LANGS_FNS = ('lang', 'langs', '.lang', '.langs')
+
 # Global parser namespace
 cli_args = None
 
@@ -106,7 +108,7 @@ def walk_directory(path):
     return movie_list
 
 
-def remux_file(command):
+def remux_file(command, cli_args):
     """
     Remux a mkv file with the given parameters.
 
@@ -217,12 +219,13 @@ class MKVFile(object):
 
     :param str path: Path to the Matroska file to process.
     """
-    def __init__(self, path):
+    def __init__(self, path, cli_args):
         self.dirpath, self.filename = os.path.split(path)
         self.subtitle_tracks = []
         self.video_tracks = []
         self.audio_tracks = []
         self.path = path
+        self.cli_args = cli_args
 
         # Commandline auguments for extracting info about the mkv file
         command = [cli_args.mkvmerge_bin, "-i", "-F", "json", path]
@@ -255,11 +258,11 @@ class MKVFile(object):
         :return: Tuple of tracks to keep and remove
         :rtype: tuple[list[Track]]
         """
-        languages_to_keep = cli_args.language
+        languages_to_keep = self.cli_args.language
         if track_type == 'audio':
             tracks = self.audio_tracks
         elif track_type == 'subtitle':
-            if cli_args.subs_language is not None:
+            if self.cli_args.subs_language is not None:
                 languages_to_keep = cli_args.subs_language
             tracks = self.subtitle_tracks
         else:
@@ -303,7 +306,7 @@ class MKVFile(object):
     def remove_tracks(self):
         """Remove the unwanted tracks."""
         # The command line args required to remux the mkv file
-        command = [cli_args.mkvmerge_bin, "--output"]
+        command = [self.cli_args.mkvmerge_bin, "--output"]
         print("\nRemuxing:", self.filename)
         print("============================")
 
@@ -339,7 +342,7 @@ class MKVFile(object):
 
         # Add source mkv file to command and remux
         command.append(self.path)
-        if remux_file(command):
+        if remux_file(command, self.cli_args):
             replace_file(tmp_file, self.path)
         else:
             # If we get here then something went wrong
@@ -348,18 +351,72 @@ class MKVFile(object):
                 os.remove(tmp_file)
 
 
-@catch_interrupt
-def main(params=None):
-    """
-    Check all mkv files an remove unnecessary tracks.
+def strip_path(path, cli_args):
+    # Iterate over all found mkv files
+    print("Searching for MKV files to process.")
+    print("Warning: This may take some time...")
+    for mkv_file in walk_directory(path):
+        mkv_obj = MKVFile(mkv_file, cli_args)
+        if mkv_obj.remux_required:
+            mkv_obj.remove_tracks()
 
-    :param params: [opt] List of arguments to pass to argparse.
-    :type params: list or tuple
-    """
+
+def read_lang_files(lang_roots, path):
+    """Read the lang files and parse languages."""
+    if path not in lang_roots:
+        lang_roots[path] = set()
+        for fn in LANGS_FNS:
+            try:
+                langpath = os.path.join(path, fn)
+                newlangs = set()
+                with open(langpath, 'r') as langfile:
+                    for line in langfile:
+                        linelangs = set(line.strip().split(','))
+                        newlangs = newlangs.union(linelangs)
+                lang_roots[path] = lang_roots[path].union(newlangs)
+            except FileNotFoundError:
+                pass
+    return lang_roots[path]
+
+
+def get_langs(root_path, path, lang_roots, cli_args):
+    """Get the languages from this dir and parent dirs."""
+    langs = set(cli_args.language)
+
+    while True:
+        new_langs = read_lang_files(lang_roots, path)
+        langs = langs.union(new_langs)
+        if path == root_path:
+            break
+        path = os.path.dirname(path)
+    return langs
+
+
+def strip_tree(path, cli_args):
+    """Walk the dirtree of the given path and strip evertyhing."""
+    # lang_roots is held as a cache per tree in this scope
+    lang_roots = {}
+    root_path = os.path.realpath(path)
+
+    for root, _, filelist in os.walk(root_path):
+        cli_args.language = get_langs(root_path, root, lang_roots,
+                                      cli_args)
+        print(root, cli_args.language)
+        for filename in filelist:
+            if not filename.endswith('mkv'):
+                continue
+            fullpath = os.path.join(root, filename)
+            strip_path(fullpath, cli_args)
+
+        if not cli_args.recurse:
+            break
+
+
+def parse_args(params=None):
     # Create Parser to parse the required arguments
     parser = argparse.ArgumentParser(description="Strips unnecessary tracks from MKV files.")
-    parser.add_argument("path", action=RealPath,
-                        help="Where your MKV files are stored. Can be a directory or a file.")
+    parser.add_argument("paths", nargs='+',
+                        help="Where your MKV files are stored. Can be directories or files.")
     parser.add_argument("-t", "--dry-run", action="store_true", help="Enable mkvmerge dry run for testing.")
     parser.add_argument("-b", "--mkvmerge-bin", default=BIN_DEFAULT,
                         action="store", metavar="path",
@@ -374,17 +431,26 @@ def main(params=None):
                         dest="subs_language", default=None,
                         help="If specified, defines subtitle languages to retain. See description of --language "
                              "for syntax.")
+    parser.add_argument("-r", "--recurse", action="store_true",
+                        default=False,
+                        help="Recurse through all paths on the command line.")
 
     # Parse the list of given arguments
-    globals()["cli_args"] = parser.parse_args(params)
+    return parser.parse_args(params)
 
-    # Iterate over all found mkv files
-    print("Searching for MKV files to process.")
-    print("Warning: This may take some time...")
-    for mkv_file in walk_directory(cli_args.path):
-        mkv_obj = MKVFile(mkv_file)
-        if mkv_obj.remux_required:
-            mkv_obj.remove_tracks()
+
+@catch_interrupt
+def main(params=None):
+    """
+    Check all mkv files an remove unnecessary tracks.
+
+    :param params: [opt] List of arguments to pass to argparse.
+    :type params: list or tuple
+    """
+    cli_args = parse_args(params)
+
+    for path in cli_args.paths:
+        strip_tree(path, cli_args)
 
 
 if __name__ == "__main__":

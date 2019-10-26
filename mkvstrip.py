@@ -118,11 +118,9 @@ def remux_file(command, cli_args):
     :return: Boolean indicating if remux was successful.
     :rtype: bool
     """
-    if cli_args.verbose:
-        print(command)
-
     # Skip remuxing if in dry run mode
     if cli_args.dry_run:
+        sys.stdout.flush()
         print("Dry run 100%")
         return False
 

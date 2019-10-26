@@ -318,6 +318,9 @@ class MKVFile(object):
         command.extend(["--title", self.filename[:-4]])
 
         # Iterate all tracks and mark which tracks are to be kepth
+        print("DEBUG Iterate and mark tracks")
+        dbg_rem_aud = ""
+        dbg_rem_sub = ""
         for track_type in ("audio", "subtitle"):
             keep, remove = self._filtered_tracks(track_type)
             if keep and remove:
@@ -338,10 +341,15 @@ class MKVFile(object):
                 print("Removing %s track(s):" % track_type)
                 for track in remove:
                     print("   ", track)
+                    if track_type == "audio":
+                        dbg_rem_aud += " " + str(track)
+                    else:
+                        dbg_rem_sub += " " + str(track)
 
                 print("----------------------------")
+        print("DEBUG remove audio:", dbg_rem_aud)
+        print("DEBUG remove subts:", dbg_rem_sub)
 
-        print("DEBUG keep", keep, "remove", remove)
         sys.stdout.flush()
         # Add source mkv file to command and remux
         command.append(self.path)

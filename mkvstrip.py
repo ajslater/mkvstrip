@@ -302,7 +302,9 @@ class MKVFile(object):
         if (has_no_audio or audio_to_keep) and has_something_to_remove:
             print("DEBUG:", self.filename)
             print("DEBUG:", "audio_to_remove", audio_to_remove)
-            print("DEBUG:", "subs_to_remove", subs_to_remove)
+            print("DEBUG:", "subs_to_remove:")
+            for track in subs_to_remove:
+                print("DEBUG:", "  ", track)
             return True
         else:
             return False

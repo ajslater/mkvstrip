@@ -299,15 +299,7 @@ class MKVFile(object):
 
         has_no_audio = not self.audio_tracks
         has_something_to_remove = audio_to_remove or subs_to_remove
-        if (has_no_audio or audio_to_keep) and has_something_to_remove:
-            print("DEBUG:", self.filename)
-            print("DEBUG:", "audio_to_remove", audio_to_remove)
-            print("DEBUG:", "subs_to_remove:")
-            for track in subs_to_remove:
-                print("DEBUG:", "  ", track)
-            return True
-        else:
-            return False
+        return (has_no_audio or audio_to_keep) and has_something_to_remove
 
     def remove_tracks(self):
         """Remove the unwanted tracks."""
@@ -323,12 +315,11 @@ class MKVFile(object):
         command.extend(["--title", self.filename[:-4]])
 
         # Iterate all tracks and mark which tracks are to be kepth
-        print("DEBUG Iterate and mark tracks")
         dbg_rem_aud = ""
         dbg_rem_sub = ""
         for track_type in ("audio", "subtitle"):
             keep, remove = self._filtered_tracks(track_type)
-            if keep and remove:
+            if (track_type == "subtitle" or keep) and remove:
                 keep_ids = []
 
                 print("Retaining %s track(s):" % track_type)
@@ -340,7 +331,11 @@ class MKVFile(object):
                     command.extend(["--default-track", ":".join((str(track.id), "0" if count else "1"))])
 
                 # Set which tracks are to be kepth
-                command.extend(["--%s-tracks" % track_type, ",".join(keep_ids)])
+                if len(keep_ids):
+                    command.extend(["--%s-tracks" % track_type,
+                                    ",".join(keep_ids)])
+                elif track_type == "subtitle":
+                    command.extend(["--no-subtitles"])
 
                 # This is just here to report what tracks will be removed
                 print("Removing %s track(s):" % track_type)
@@ -352,8 +347,6 @@ class MKVFile(object):
                         dbg_rem_sub += " " + str(track)
 
                 print("----------------------------")
-        print("DEBUG remove audio:", dbg_rem_aud)
-        print("DEBUG remove subts:", dbg_rem_sub)
 
         sys.stdout.flush()
         # Add source mkv file to command and remux

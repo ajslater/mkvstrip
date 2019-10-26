@@ -422,7 +422,7 @@ def strip_tree(path, cli_args):
     for root, _, filelist in os.walk(dirname):
         langs = get_langs(dirname, root, lang_roots, cli_args)
         if cli_args.verbose:
-            print("Languages to preserve:", cli_args.language)
+            print("Languages to preserve:", langs)
             print("Subtitle languages to preserve:", cli_args.subs_language)
         if one_file is not None and one_file in filelist:
             filelist = (one_file,)

@@ -263,7 +263,6 @@ class MKVFile(object):
         :rtype: tuple[list[Track]]
         """
         languages_to_keep = self.cli_args.language
-        print("DEBUG languages_to_keep", languages_to_keep)
         if track_type == 'audio':
             tracks = self.audio_tracks
         elif track_type == 'subtitle':
@@ -273,7 +272,6 @@ class MKVFile(object):
         else:
             assert False
 
-        print("DEBUG languages_to_keep", languages_to_keep)
         # Lists of track to keep & remove
         remove = []
         keep = []
@@ -368,7 +366,7 @@ def strip_path(root, filename, langs, cli_args):
     for mkv_file in walk_directory(fullpath):
         if cli_args.verbose:
             print("Checking", fullpath)
-        mkv_obj = MKVFile(mkv_file, cli_args)
+        mkv_obj = MKVFile(mkv_file, cli_args_copy)
         if mkv_obj.remux_required:
             mkv_obj.remove_tracks()
 

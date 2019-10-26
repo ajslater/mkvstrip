@@ -117,6 +117,9 @@ def remux_file(command, cli_args):
     :return: Boolean indicating if remux was successful.
     :rtype: bool
     """
+    if cli_args.verbose:
+        print(command)
+
     # Skip remuxing if in dry run mode
     if cli_args.dry_run:
         print("Dry run 100%")
@@ -353,9 +356,9 @@ class MKVFile(object):
 
 def strip_path(path, cli_args):
     # Iterate over all found mkv files
-    print("Searching for MKV files to process.")
-    print("Warning: This may take some time...")
     for mkv_file in walk_directory(path):
+        if cli_args.verbose:
+            print("Checking", path)
         mkv_obj = MKVFile(mkv_file, cli_args)
         if mkv_obj.remux_required:
             mkv_obj.remove_tracks()
@@ -395,6 +398,9 @@ def get_langs(root_path, path, lang_roots, cli_args):
 def strip_tree(path, cli_args):
     """Walk the dirtree of the given path and strip evertyhing."""
     # lang_roots is held as a cache per tree in this scope
+    print("Searching for MKV files to process.")
+    print("Warning: This may take some time...")
+
     lang_roots = {}
     real_path = os.path.realpath(path)
 
@@ -409,6 +415,9 @@ def strip_tree(path, cli_args):
     for root, _, filelist in os.walk(dirname):
         cli_args.language = get_langs(dirname, root, lang_roots,
                                       cli_args)
+        if cli_args.verbose:
+            print("Languages to preserve:", cli_args.language)
+            print("Subtitle languages to preserve:", cli_args.subs_language)
         if one_file is not None and one_file in filelist:
             filelist = (one_file,)
         for filename in filelist:
@@ -443,6 +452,10 @@ def parse_args(params=None):
     parser.add_argument("-r", "--recurse", action="store_true",
                         default=False,
                         help="Recurse through all paths on the command line.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        default=False,
+                        help="Verbose output about.")
+
 
     # Parse the list of given arguments
     return parser.parse_args(params)

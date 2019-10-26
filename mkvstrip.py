@@ -299,6 +299,9 @@ class MKVFile(object):
 
         has_no_audio = not self.audio_tracks
         has_something_to_remove = audio_to_remove or subs_to_remove
+        print("DEBUG:", self.filename)
+        print("DEBUG:", "audio_to_remove", audio_to_remove)
+        print("DEBUG:", "subs_to_remove", subs_to_remove)
         if (has_no_audio or audio_to_keep) and has_something_to_remove:
             return True
         else:

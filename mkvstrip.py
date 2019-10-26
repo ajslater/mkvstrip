@@ -120,7 +120,6 @@ def remux_file(command, cli_args):
     """
     # Skip remuxing if in dry run mode
     if cli_args.dry_run:
-        sys.stdout.flush()
         print("Dry run 100%")
         return False
 
@@ -342,6 +341,8 @@ class MKVFile(object):
 
                 print("----------------------------")
 
+        print("DEBUG keep", keep, "remove", remove)
+        sys.stdout.flush()
         # Add source mkv file to command and remux
         command.append(self.path)
         if remux_file(command, self.cli_args):

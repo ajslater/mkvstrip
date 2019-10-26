@@ -263,6 +263,7 @@ class MKVFile(object):
         :rtype: tuple[list[Track]]
         """
         languages_to_keep = self.cli_args.language
+        print("DEBUG languages_to_keep", languages_to_keep)
         if track_type == 'audio':
             tracks = self.audio_tracks
         elif track_type == 'subtitle':
@@ -272,6 +273,7 @@ class MKVFile(object):
         else:
             assert False
 
+        print("DEBUG languages_to_keep", languages_to_keep)
         # Lists of track to keep & remove
         remove = []
         keep = []

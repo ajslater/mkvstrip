@@ -45,6 +45,7 @@ import time
 import json
 import sys
 import os
+from copy import deepcopy
 
 LANGS_FNS = ('lang', 'langs', '.lang', '.langs')
 
@@ -354,11 +355,17 @@ class MKVFile(object):
                 os.remove(tmp_file)
 
 
-def strip_path(path, cli_args):
+def strip_path(root, filename, langs, cli_args):
     # Iterate over all found mkv files
-    for mkv_file in walk_directory(path):
+    if not filename.endswith('mkv'):
+        return
+    fullpath = os.path.join(root, filename)
+    cli_args_copy = deepcopy(cli_args)
+    cli_args_copy.language = langs
+
+    for mkv_file in walk_directory(fullpath):
         if cli_args.verbose:
-            print("Checking", path)
+            print("Checking", fullpath)
         mkv_obj = MKVFile(mkv_file, cli_args)
         if mkv_obj.remux_required:
             mkv_obj.remove_tracks()
@@ -413,18 +420,14 @@ def strip_tree(path, cli_args):
         one_file = None
 
     for root, _, filelist in os.walk(dirname):
-        cli_args.language = get_langs(dirname, root, lang_roots,
-                                      cli_args)
+        langs = get_langs(dirname, root, lang_roots, cli_args)
         if cli_args.verbose:
             print("Languages to preserve:", cli_args.language)
             print("Subtitle languages to preserve:", cli_args.subs_language)
         if one_file is not None and one_file in filelist:
             filelist = (one_file,)
         for filename in filelist:
-            if not filename.endswith('mkv'):
-                continue
-            fullpath = os.path.join(root, filename)
-            strip_path(fullpath, cli_args)
+            strip_path(root, filename, langs, cli_args)
 
         if not cli_args.recurse:
             break
@@ -455,7 +458,6 @@ def parse_args(params=None):
     parser.add_argument("-v", "--verbose", action="store_true",
                         default=False,
                         help="Verbose output about.")
-
 
     # Parse the list of given arguments
     return parser.parse_args(params)

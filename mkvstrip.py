@@ -46,9 +46,6 @@ import json
 import sys
 import os
 
-# Global parser namespace
-cli_args = None
-
 if sys.platform == "win32":
     BIN_DEFAULT = "C:\\\\Program Files\\MKVToolNix\\mkvmerge.exe"
 else:
@@ -106,7 +103,7 @@ def walk_directory(path):
     return movie_list
 
 
-def remux_file(command):
+def remux_file(command, cli_args):
     """
     Remux a mkv file with the given parameters.
 
@@ -217,15 +214,16 @@ class MKVFile(object):
 
     :param str path: Path to the Matroska file to process.
     """
-    def __init__(self, path):
+    def __init__(self, path, cli_args):
         self.dirpath, self.filename = os.path.split(path)
         self.subtitle_tracks = []
         self.video_tracks = []
         self.audio_tracks = []
         self.path = path
+        self.cli_args = cli_args
 
         # Commandline auguments for extracting info about the mkv file
-        command = [cli_args.mkvmerge_bin, "-i", "-F", "json", path]
+        command = [self.cli_args.mkvmerge_bin, "-i", "-F", "json", path]
 
         # Ask mkvmerge for the json info
         process = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
@@ -255,12 +253,12 @@ class MKVFile(object):
         :return: Tuple of tracks to keep and remove
         :rtype: tuple[list[Track]]
         """
-        languages_to_keep = cli_args.language
+        languages_to_keep = self.cli_args.language
         if track_type == 'audio':
             tracks = self.audio_tracks
         elif track_type == 'subtitle':
-            if cli_args.subs_language is not None:
-                languages_to_keep = cli_args.subs_language
+            if self.cli_args.subs_language is not None:
+                languages_to_keep = self.cli_args.subs_language
             tracks = self.subtitle_tracks
         else:
             assert False
@@ -303,7 +301,7 @@ class MKVFile(object):
     def remove_tracks(self):
         """Remove the unwanted tracks."""
         # The command line args required to remux the mkv file
-        command = [cli_args.mkvmerge_bin, "--output"]
+        command = [self.cli_args.mkvmerge_bin, "--output"]
         print("\nRemuxing:", self.filename)
         print("============================")
 
@@ -339,7 +337,7 @@ class MKVFile(object):
 
         # Add source mkv file to command and remux
         command.append(self.path)
-        if remux_file(command):
+        if remux_file(command, self.cli_args):
             replace_file(tmp_file, self.path)
         else:
             # If we get here then something went wrong
@@ -376,13 +374,13 @@ def main(params=None):
                              "for syntax.")
 
     # Parse the list of given arguments
-    globals()["cli_args"] = parser.parse_args(params)
+    cli_args = parser.parse_args(params)
 
     # Iterate over all found mkv files
     print("Searching for MKV files to process.")
     print("Warning: This may take some time...")
     for mkv_file in walk_directory(cli_args.path):
-        mkv_obj = MKVFile(mkv_file)
+        mkv_obj = MKVFile(mkv_file, cli_args)
         if mkv_obj.remux_required:
             mkv_obj.remove_tracks()
 

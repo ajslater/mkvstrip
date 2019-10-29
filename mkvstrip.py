@@ -427,8 +427,8 @@ def strip_tree(path, cli_args):
     for root, _, filelist in os.walk(dirname):
         langs = get_langs(dirname, root, lang_roots, cli_args)
         if cli_args.verbose:
-            print("Languages to preserve:", langs)
-            print("Subtitle languages to preserve:", cli_args.subs_language)
+            print("Languages:", langs, "Subtitle languages:",
+                  cli_args.subs_language)
         if one_file is not None and one_file in filelist:
             filelist = (one_file,)
         for filename in filelist:
@@ -460,9 +460,6 @@ def parse_args(params=None):
     parser.add_argument("-r", "--recurse", action="store_true",
                         default=False,
                         help="Recurse through all paths on the command line.")
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        default=False,
-                        help="Verbose output about.")
 
     # Parse the list of given arguments
     return parser.parse_args(params)

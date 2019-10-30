@@ -75,3 +75,10 @@ CLI Arguments
                             all subtitles.
     -v, --verbose         Verbose output.
     -r, --recurse         Recurse through all paths on the command line.
+
+Lang Files
+----------
+Lang files are primarily for use with the `--recurse` option. They are persistent files on disk that will be parsed by mkvstrip and apply their languages to keep to all the mkvs in the current directory and all sub directories.
+Lang files may be named: 'lang', 'langs', '.lang', or '.langs'
+They may include comma separatedlist of languages to retain exactly like the `-l` option.
+e.g. You may have an entire TV collecttion with a root lang file containing the `eng` language. Under that directory you may have a TV show with lang file containing `jpn` and multiple season directories under that. All seasons of the TV show would then retain the `eng,jpn` languages, while other TV shows would only retain `eng`.

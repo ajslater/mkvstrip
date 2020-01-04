@@ -306,8 +306,8 @@ class MKVFile(object):
         """Remove the unwanted tracks."""
         # The command line args required to remux the mkv file
         command = [cli_args.mkvmerge_bin, "--output"]
-        print("\nRemuxing:", self.filename)
-        print("============================")
+        output = "\nRemuxing: " + self.filename + "\n"
+        output += "============================\n"
 
         # Output the remuxed file to a temp tile, This will protect
         # the original file from been currupted if anything goes wrong
@@ -316,16 +316,17 @@ class MKVFile(object):
         command.extend(["--title", self.filename[:-4]])
 
         # Iterate all tracks and mark which tracks are to be kepth
+        num_remove_ids = 0
         for track_type in ("audio", "subtitle"):
             keep, remove = self._filtered_tracks(track_type)
             if ((track_type == "subtitle" and cli_args.no_subtitles)
                     or keep) and remove:
                 keep_ids = []
 
-                print("Retaining %s track(s):" % track_type)
+                output += "Retaining %s track(s):\n" % track_type
                 for count, track in enumerate(keep):
                     keep_ids.append(str(track.id))
-                    print("   ", track)
+                    output += "   " + track + "\n"
 
                     # Set the first track as default
                     command.extend(["--default-track", ":".join((str(track.id), "0" if count else "1"))])
@@ -337,12 +338,19 @@ class MKVFile(object):
                 elif track_type == "subtitle":
                     command.extend(["--no-subtitles"])
 
+                num_remove_ids += len(remove)
+
                 # This is just here to report what tracks will be removed
-                print("Removing %s track(s):" % track_type)
+                output += "Removing %s track(s):\n" % track_type
                 for track in remove:
                     print("   ", track)
 
-                print("----------------------------")
+                output += "----------------------------\n"
+
+        if num_remove_ids <= 0:
+            return
+
+        print(output)
 
         # Add source mkv file to command and remux
         command.append(self.path)

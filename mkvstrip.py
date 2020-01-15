@@ -370,8 +370,8 @@ def strip_path(root, filename, langs):
     # Iterate over all found mkv files
     if not filename.endswith('mkv'):
         return
-    fullpath = os.path.join(root, filename)
 
+    fullpath = os.path.join(root, filename)
     for mkv_file in walk_directory(fullpath):
         if cli_args.verbose:
             print("Checking", fullpath)

@@ -329,7 +329,7 @@ class MKVFile(object):
                 output += "Retaining %s track(s):\n" % track_type
                 for count, track in enumerate(keep):
                     keep_ids.append(str(track.id))
-                    output += "   " + track + "\n"
+                    output += "   %s\n" % track
 
                     # Set the first track as default
                     command.extend(["--default-track", ":".join((str(track.id), "0" if count else "1"))])

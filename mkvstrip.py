@@ -353,7 +353,7 @@ class MKVFile(object):
         if num_remove_ids <= 0:
             return
 
-        print(output)
+        print(output, flush=True)
 
         # Add source mkv file to command and remux
         command.append(self.path)

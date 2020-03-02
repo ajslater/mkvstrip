@@ -238,7 +238,12 @@ class MKVFile(object):
         # Process the json response
         json_data = json.loads(stdout)
         track_map = {"video": self.video_tracks, "audio": self.audio_tracks, "subtitles": self.subtitle_tracks}
-        for track_data in json_data["tracks"]:
+        tracks = json_data.get("tracks")
+        if not tracks:
+            print(f"No tracks for {path}")
+            print("Might not be a valid movie.")
+            return
+        for track_data in tracks:
             track_obj = Track(track_data)
             track_map[track_obj.type].append(track_obj)
 

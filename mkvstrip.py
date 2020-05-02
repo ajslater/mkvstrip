@@ -413,9 +413,9 @@ def strip_tree(path):
             # No sophisticated traversal search.
             timestamp = os.stat(timestamp_fn).st_mtime
             timestamp_dt = datetime.datetime.fromtimestamp(timestamp)
-            print(f"Found mkvstrip timestamp from {timestamp_dt}")
+            print(f"Found mkvstrip timestamp in {dirname} from {timestamp_dt}")
         else:
-            print("No mkvstrip timestamp found.")
+            print("No mkvstrip timestamp found in {dirname}.")
         sys.stdout.flush()
 
 
@@ -437,7 +437,7 @@ def strip_tree(path):
         else:
             with open(timestamp_fn, 'a'):
                 pass
-        print("Set mkvstrip timestamp.")
+        print(f"Set mkvstrip timestamp in {path}.")
 
 @catch_interrupt
 def main(params=None):

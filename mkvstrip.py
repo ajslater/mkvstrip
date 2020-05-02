@@ -41,6 +41,7 @@ from functools import lru_cache
 from operator import itemgetter
 import subprocess
 import argparse
+import datetime
 import time
 import json
 import sys
@@ -54,7 +55,7 @@ if sys.platform == "win32":
     BIN_DEFAULT = "C:\\\\Program Files\\MKVToolNix\\mkvmerge.exe"
 else:
     BIN_DEFAULT = "mkvmerge"
-
+TIMESTAMP_FN = ".mkvmerge_timestamp"
 
 def catch_interrupt(func):
     """Decorator to catch Keyboard Interrupts and silently exit."""
@@ -68,7 +69,7 @@ def catch_interrupt(func):
     return wrapper
 
 
-def walk_directory(path):
+def walk_directory(path, timestamp):
     """
     Walk through the given directory to find all mkv files and process them.
 
@@ -80,7 +81,10 @@ def walk_directory(path):
     movie_list = []
     if os.path.isfile(path):
         if path.lower().endswith(".mkv"):
-            movie_list.append(path)
+            mtime = os.stat(path).st_mtime
+            if timestamp is None or os.stat(path).st_mtime > timestamp:
+                movie_list.append(path)
+
         else:
             raise ValueError("Given file is not a valid mkv file: '%s'" % path)
 
@@ -91,7 +95,8 @@ def walk_directory(path):
             files = []
             for filename in filenames:
                 if filename.lower().endswith(".mkv"):
-                    files.append(filename)
+                    if timestamp is None or os.stat(os.path.join(dirpath, filename)).st_mtime > timestamp:
+                        files.append(filename)
 
             # Sort list of files and add to directory list
             dirs.append((dirpath, sorted(files)))
@@ -371,13 +376,13 @@ class MKVFile(object):
                 os.remove(tmp_file)
 
 
-def strip_path(root, filename, langs):
+def strip_path(root, filename, langs, timestamp):
     # Iterate over all found mkv files
     if not filename.endswith('mkv'):
         return
 
     fullpath = os.path.join(root, filename)
-    for mkv_file in walk_directory(fullpath):
+    for mkv_file in walk_directory(fullpath, timestamp):
         if cli_args.verbose:
             print("Checking", fullpath)
         mkv_obj = MKVFile(mkv_file, langs)
@@ -400,16 +405,39 @@ def strip_tree(path):
         dirname = real_path
         one_file = None
 
+    timestamp = None
+    if cli_args.timestamp:
+        timestamp_fn = os.path.join(dirname, TIMESTAMP_FN)
+        if os.path.exists(timestamp_fn):
+            # Very simple timestamp at root check.
+            # No sophisticated traversal search.
+            timestamp = os.stat(timestamp_fn).st_mtime
+            timestamp_dt = datetime.datetime.fromtimestamp(timestamp)
+            print(f"Found mkvstrip timestamp from {timestamp_dt}")
+        else:
+            print("No mkvstrip timestamp found.")
+        sys.stdout.flush()
+
+
     for root, _, filelist in os.walk(dirname):
         langs = get_langs(dirname, root, lang_roots, cli_args)
         if one_file is not None and one_file in filelist:
-            filelist = (one_file,)
+            if timestamp is None or os.stat(os.path.join(root, one_file)).st_mtime > timestamp:
+                filelist = (one_file,)
         for filename in filelist:
-            strip_path(root, filename, langs)
+            strip_path(root, filename, langs, timestamp)
 
         if not cli_args.recurse:
             break
 
+    if cli_args.timestamp:
+        timestamp_fn = os.path.join(path, TIMESTAMP_FN)
+        if os.path.exists(filename):
+            os.utime(timestamp_fn)
+        else:
+            with open(timestamp_fn, 'a'):
+                pass
+        print("Set mkvstrip timestamp.")
 
 @catch_interrupt
 def main(params=None):
@@ -446,13 +474,18 @@ def main(params=None):
     parser.add_argument("-r", "--recurse", action="store_true",
                         default=False,
                         help="Recurse through all paths on the command line.")
+    parser.add_argument("-m", "--timestamp", action="store_true",
+                        default=False,
+                        help="Read and write timestamps to strip only files that have been modified since the last run.")
+
 
     # Parse the list of given arguments
     globals()["cli_args"] = parser.parse_args(params)
 
     # Iterate over all found mkv files
     print("Searching for MKV files to process.")
-    print("Warning: This may take some time...")
+    if not cli_args.timestamp:
+        print("This may take some time. Using the --timestamp argument can speed up subsequent runs dramatically.")
     for path in cli_args.paths:
         strip_tree(path)
 

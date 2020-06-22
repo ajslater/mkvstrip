@@ -81,7 +81,6 @@ def walk_directory(path, timestamp):
     movie_list = []
     if os.path.isfile(path):
         if path.lower().endswith(".mkv"):
-            mtime = os.stat(path).st_mtime
             if timestamp is None or os.stat(path).st_mtime > timestamp:
                 movie_list.append(path)
 
@@ -94,9 +93,14 @@ def walk_directory(path, timestamp):
         for dirpath, _, filenames in os.walk(path):
             files = []
             for filename in filenames:
-                if filename.lower().endswith(".mkv"):
-                    if timestamp is None or os.stat(os.path.join(dirpath, filename)).st_mtime > timestamp:
-                        files.append(filename)
+                if (
+                  filename.lower().endswith(".mkv") and
+                  (timestamp is None or (
+                    os.stat(
+                      os.path.join(dirpath, filename)).st_mtime > timestamp)
+                   )
+                ):
+                    files.append(filename)
 
             # Sort list of files and add to directory list
             dirs.append((dirpath, sorted(files)))
@@ -159,7 +163,7 @@ def remux_file(command):
         return True
 
 
-def replace_file(tmp_file, org_file):
+def replace_file(tmp_file, orig_file):
     """
     Replaces the original mkv file with the newly remuxed temp file.
 
@@ -167,16 +171,17 @@ def replace_file(tmp_file, org_file):
     :param str org_file: The original mkv file to replace.
     """
     # Preserve timestamp
-    stat = os.stat(org_file)
-    os.utime(tmp_file, (stat.st_atime, stat.st_mtime))
+    # XXX don't lie about timestamps
+    # stat = os.stat(orig_file)
+    # os.utime(tmp_file, (stat.st_atime, stat.st_mtime))
 
     # Overwrite original file
     try:
-        os.unlink(org_file)
-        os.rename(tmp_file, org_file)
+        # os.unlink(orig_file)
+        os.replace(tmp_file, orig_file)
     except EnvironmentError as e:
         os.unlink(tmp_file)
-        print("Renaming failed: %s => %s" % (tmp_file, org_file))
+        print("Renaming failed: %s => %s" % (tmp_file, orig_file))
         print(e)
 
 
@@ -431,12 +436,9 @@ def strip_tree(path):
             break
 
     if cli_args.timestamp:
+        from pathlib import Path
         timestamp_fn = os.path.join(path, TIMESTAMP_FN)
-        if os.path.exists(filename):
-            os.utime(timestamp_fn)
-        else:
-            with open(timestamp_fn, 'a'):
-                pass
+        Path(timestamp_fn).touch(exist_ok=True)
         print(f"Set mkvstrip timestamp in {path}.")
 
 @catch_interrupt
